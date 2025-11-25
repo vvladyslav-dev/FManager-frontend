@@ -3,8 +3,6 @@ import { Form, Input, Select, Space, Button, Checkbox, Card } from 'antd';
 import { DeleteOutlined, PlusOutlined, CloseOutlined, HolderOutlined, ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 
-const { TextArea } = Input;
-
 interface FormFieldEditorProps {
   fieldIndex: number;
   restField: any;

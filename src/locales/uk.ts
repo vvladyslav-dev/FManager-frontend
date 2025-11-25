@@ -1,4 +1,4 @@
-export default {
+const translations = {
   common: {
     forms: 'Форми',
     submissions: 'Анкети',
@@ -204,4 +204,6 @@ export default {
     errorLoading: 'Помилка завантаження непідтверджених адмінів',
   },
 };
+
+export default translations;
 

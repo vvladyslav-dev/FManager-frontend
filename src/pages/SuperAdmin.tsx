@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Table, Button, Space, message, Tag, Popconfirm, Typography, Empty, Spin } from 'antd';
+import { Card, Table, Button, Space, message, Popconfirm, Typography, Empty, Spin } from 'antd';
 import { CheckOutlined, CloseOutlined, UserOutlined, MailOutlined, CalendarOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -9,7 +9,7 @@ import dayjs from 'dayjs';
 const { Text, Title } = Typography;
 
 const SuperAdmin: React.FC = () => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
@@ -86,7 +86,6 @@ const SuperAdmin: React.FC = () => {
       key: 'created_at',
       render: (date: string) => {
         const createdDate = dayjs(date);
-        const locale = i18n.language === 'uk' ? 'uk-UA' : 'en-US';
         return (
           <Space>
             <CalendarOutlined style={{ color: '#9CA3AF' }} />

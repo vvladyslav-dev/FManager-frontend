@@ -1,4 +1,4 @@
-export default {
+const translations = {
   common: {
     forms: 'Forms',
     submissions: 'Submissions',
@@ -201,7 +201,9 @@ export default {
     adminRejected: 'Admin rejected successfully',
     noPendingRegistrations: 'No pending admin registrations',
     loading: 'Loading...',
-    errorLoading: 'Error loading unapproved admins',
+    errorLoading: 'Error loading pending admins',
   },
 };
+
+export default translations;
 

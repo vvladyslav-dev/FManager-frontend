@@ -6,7 +6,7 @@ import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tansta
 import { submissionsApi, FormSubmission } from '../api/submissions';
 import { formsApi } from '../api/forms';
 import apiClient from '../api/client';
-import dayjs, { Dayjs } from 'dayjs';
+import { Dayjs } from 'dayjs';
 
 const { Text } = Typography;
 const { TextArea } = Input;
