@@ -160,22 +160,22 @@ const SuperAdmin: React.FC = () => {
         </Text>
       </div>
 
-      <Card
-        style={{
-          borderRadius: 12,
-          border: '1px solid #E5E7EB',
-          backgroundColor: '#fff',
-        }}
-        bodyStyle={{ padding: '20px' }}
-      >
-        {isLoading ? (
-          <div style={{ textAlign: 'center', padding: '48px' }}>
-            <Spin size="large" />
-            <div style={{ marginTop: 16, fontSize: 15, color: '#6B7280' }}>
-              {t('superAdmin.loading') || 'Loading...'}
-            </div>
+      {isLoading ? (
+        <div style={{ textAlign: 'center', padding: '48px' }}>
+          <Spin size="large" />
+          <div style={{ marginTop: 16, fontSize: 15, color: '#6B7280' }}>
+            {t('superAdmin.loading') || 'Loading...'}
           </div>
-        ) : !unapprovedAdmins || unapprovedAdmins.length === 0 ? (
+        </div>
+      ) : !unapprovedAdmins || unapprovedAdmins.length === 0 ? (
+        <Card
+          style={{
+            borderRadius: 12,
+            border: '1px solid #E5E7EB',
+            backgroundColor: '#fff',
+          }}
+          bodyStyle={{ padding: '20px' }}
+        >
           <Empty
             description={
               <span style={{ fontSize: 15, color: '#6B7280' }}>
@@ -184,16 +184,118 @@ const SuperAdmin: React.FC = () => {
             }
             style={{ padding: '48px' }}
           />
-        ) : (
+        </Card>
+      ) : isMobile ? (
+        // Mobile: Card view
+        <Space direction="vertical" size={16} style={{ width: '100%' }}>
+          {unapprovedAdmins.map((admin) => (
+            <Card
+              key={admin.id}
+              style={{
+                borderRadius: 12,
+                border: '1px solid #E5E7EB',
+                backgroundColor: '#fff',
+              }}
+              bodyStyle={{ padding: '16px' }}
+            >
+              <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                {/* Name */}
+                <div>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    {t('superAdmin.name') || 'Name'}
+                  </Text>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                    <UserOutlined style={{ color: '#9CA3AF' }} />
+                    <Text strong style={{ fontSize: 15 }}>{admin.name}</Text>
+                  </div>
+                </div>
+
+                {/* Email */}
+                <div>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    {t('superAdmin.email') || 'Email'}
+                  </Text>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                    <MailOutlined style={{ color: '#9CA3AF' }} />
+                    <Text style={{ fontSize: 14, wordBreak: 'break-all' }}>{admin.email}</Text>
+                  </div>
+                </div>
+
+                {/* Registration Date */}
+                <div>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    {t('superAdmin.registrationDate') || 'Registration Date'}
+                  </Text>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                    <CalendarOutlined style={{ color: '#9CA3AF' }} />
+                    <Text style={{ fontSize: 14 }}>
+                      {dayjs(admin.created_at).format('DD MMM YYYY, HH:mm')}
+                    </Text>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div style={{ display: 'flex', gap: 8, marginTop: 8, width: '100%' }}>
+                  <Popconfirm
+                    title={t('superAdmin.approveConfirm') || 'Approve this admin?'}
+                    description={t('superAdmin.approveDescription') || 'This will allow the admin to access the system.'}
+                    onConfirm={() => handleApprove(admin.id)}
+                    okText={t('common.yes') || 'Yes'}
+                    cancelText={t('common.no') || 'No'}
+                  >
+                    <Button
+                      type="primary"
+                      icon={<CheckOutlined />}
+                      loading={approveMutation.isPending}
+                      style={{
+                        background: '#10B981',
+                        borderColor: '#10B981',
+                        flex: 1,
+                      }}
+                    >
+                      {t('superAdmin.approve') || 'Approve'}
+                    </Button>
+                  </Popconfirm>
+                  <Popconfirm
+                    title={t('superAdmin.rejectConfirm') || 'Reject this admin?'}
+                    description={t('superAdmin.rejectDescription') || 'This will delete the admin registration.'}
+                    onConfirm={() => handleReject(admin.id)}
+                    okText={t('common.yes') || 'Yes'}
+                    cancelText={t('common.no') || 'No'}
+                    okButtonProps={{ danger: true }}
+                  >
+                    <Button
+                      danger
+                      icon={<CloseOutlined />}
+                      loading={rejectMutation.isPending}
+                      style={{ flex: 1 }}
+                    >
+                      {t('superAdmin.reject') || 'Reject'}
+                    </Button>
+                  </Popconfirm>
+                </div>
+              </Space>
+            </Card>
+          ))}
+        </Space>
+      ) : (
+        // Desktop: Table view
+        <Card
+          style={{
+            borderRadius: 12,
+            border: '1px solid #E5E7EB',
+            backgroundColor: '#fff',
+          }}
+          bodyStyle={{ padding: '20px' }}
+        >
           <Table
             dataSource={unapprovedAdmins}
             columns={columns}
             rowKey="id"
             pagination={false}
-            scroll={{ x: isMobile ? 800 : undefined }}
           />
-        )}
-      </Card>
+        </Card>
+      )}
     </div>
   );
 };

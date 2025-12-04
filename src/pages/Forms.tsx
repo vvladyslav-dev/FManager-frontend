@@ -387,15 +387,18 @@ const Forms: React.FC = () => {
           <>
             <Row gutter={[24, 24]}>
             {filteredForms.map((formItem: FormType) => {
-              const createdDate = new Date(formItem.created_at);
+              // Safely parse date with fallback
+              const createdDate = formItem.created_at ? new Date(formItem.created_at) : new Date();
+              const isValidDate = !isNaN(createdDate.getTime());
+              
               const locale = i18n.language === 'uk' ? 'uk-UA' : 'en-US';
-              const month = createdDate.toLocaleDateString(locale, { month: 'short' });
-              const day = createdDate.getDate();
-              const year = createdDate.getFullYear();
-              const createdTime = createdDate.toLocaleString(locale, {
+              const month = isValidDate ? createdDate.toLocaleDateString(locale, { month: 'short' }) : 'N/A';
+              const day = isValidDate ? createdDate.getDate() : 0;
+              const year = isValidDate ? createdDate.getFullYear() : 0;
+              const createdTime = isValidDate ? createdDate.toLocaleString(locale, {
                 hour: '2-digit',
                 minute: '2-digit'
-              });
+              }) : 'N/A';
               
               return (
                 <Col xs={24} sm={24} md={12} lg={8} key={formItem.id}>
@@ -415,6 +418,7 @@ const Forms: React.FC = () => {
                     }}
                     bodyStyle={{ display: 'flex', flexDirection: 'column', flex: 1, padding: '20px' }}
                     hoverable
+                    onClick={() => setPreviewForm(formItem)}
                   >
                     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
                       <div>
@@ -561,6 +565,7 @@ const Forms: React.FC = () => {
                               padding: '0 8px',
                               display: 'flex',
                               alignItems: 'center',
+                              justifyContent: 'center',
                               gap: 3,
                               minWidth: 75,
                               width: 75,
@@ -571,7 +576,7 @@ const Forms: React.FC = () => {
                             }}
                             size="small"
                           >
-                            {copiedFormId === formItem.id ? t('forms.copied') : t('forms.copyLink')}
+                            {copiedFormId === formItem.id ? '' : t('forms.copyLink')}
                           </Button>
                           {isMobile ? (
                             <>
@@ -785,7 +790,7 @@ const Forms: React.FC = () => {
                             size="large"
                             disabled
                           />
-                        ) : field.field_type === 'file' ? (
+                        ) : field.field_type === 'files' ? (
                           <Upload disabled>
                             <Button 
                               icon={<UploadOutlined />}
@@ -804,6 +809,33 @@ const Forms: React.FC = () => {
                             size="large"
                             disabled
                           />
+                        ) : field.field_type === 'email' ? (
+                          <Input 
+                            type="email" 
+                            placeholder={field.placeholder || t('submitForm.enterEmail')}
+                            style={{ borderRadius: 8, height: 44, fontSize: 15 }}
+                            size="large"
+                            disabled
+                          />
+                        ) : field.field_type === 'phone' ? (
+                          <Input 
+                            type="tel" 
+                            placeholder={field.placeholder || '+1 (555) 123-4567'}
+                            style={{ borderRadius: 8, height: 44, fontSize: 15 }}
+                            size="large"
+                            disabled
+                          />
+                        ) : field.field_type === 'signature' ? (
+                          <div style={{
+                            border: '2px dashed #D1D5DB',
+                            borderRadius: 8,
+                            padding: 16,
+                            backgroundColor: '#FAFBFC',
+                            textAlign: 'center',
+                            color: '#9CA3AF'
+                          }}>
+                            Digital Signature Field (Preview)
+                          </div>
                         ) : (
                           <Input 
                             placeholder={field.placeholder || t('submitForm.enterField', { fieldLabel: field.label.toLowerCase() })}

@@ -1,19 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Layout, Menu, Button, Space, Typography, Avatar, Dropdown, Drawer } from 'antd';
-import { FormOutlined, FileTextOutlined, LogoutOutlined, UserOutlined, GlobalOutlined, MenuOutlined, SafetyOutlined } from '@ant-design/icons';
+import { FormOutlined, FileTextOutlined, LogoutOutlined, UserOutlined, GlobalOutlined, MenuOutlined, SafetyOutlined, SettingOutlined } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { MenuProps } from 'antd';
 import { authApi } from '../api/auth';
 
-const { Header, Content } = Layout;
+const { Header, Content, Sider } = Layout;
 const { Text } = Typography;
 
 const AppLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t, i18n } = useTranslation();
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
@@ -23,6 +23,19 @@ const AppLayout: React.FC = () => {
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    const handleStorageChange = () => {
+      setUser(JSON.parse(localStorage.getItem('user') || '{}'));
+    };
+    window.addEventListener('storage', handleStorageChange);
+    // Also listen for custom event for same-tab updates
+    window.addEventListener('userUpdated', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('userUpdated', handleStorageChange);
+    };
   }, []);
 
   const handleLogout = () => {
@@ -47,6 +60,7 @@ const AppLayout: React.FC = () => {
     },
   ];
 
+  // Unified menu for the left sidebar (desktop) and drawer (mobile)
   const menuItems = [
     {
       key: '/forms',
@@ -57,6 +71,21 @@ const AppLayout: React.FC = () => {
       key: '/submissions',
       icon: <FileTextOutlined />,
       label: t('common.submissions'),
+    },
+    {
+      key: 'settings',
+      icon: <SettingOutlined />,
+      label: t('common.settings') || 'Settings',
+      children: [
+        {
+          key: '/settings/notifications',
+          label: t('settings.notificationsTitle') || 'Notifications',
+        },
+        {
+          key: '/settings/user',
+          label: t('settings.userSettingsTitle') || 'User Settings',
+        },
+      ],
     },
     ...(user.is_super_admin ? [{
       key: '/super-admin',
@@ -79,7 +108,7 @@ const AppLayout: React.FC = () => {
           height: isMobile ? 64 : 72
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 16 : 40 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 16 : 24 }}>
           {isMobile && (
             <Button
               type="text"
@@ -96,33 +125,9 @@ const AppLayout: React.FC = () => {
           }}>
             FManager
           </div>
-          {!isMobile && (
-            <Menu
-              mode="horizontal"
-              selectedKeys={[location.pathname]}
-              items={menuItems}
-              onClick={({ key }) => navigate(key)}
-              style={{ 
-                flex: 1, 
-                minWidth: 0,
-                background: 'transparent',
-                borderBottom: 'none',
-                fontSize: 15,
-                fontWeight: 500
-              }}
-            />
-          )}
+          {/* No top navigation; all items moved to left sidebar */}
         </div>
         <Space size={isMobile ? 8 : 16} wrap={false}>
-          {!isMobile && (
-            <Space size={12}>
-              <Avatar icon={<UserOutlined />} style={{ background: '#F3F4F6', color: '#6B7280' }} />
-              <Text style={{ color: '#1F2937', fontWeight: 500, fontSize: 14 }}>{user.name}</Text>
-            </Space>
-          )}
-          {isMobile && (
-            <Avatar icon={<UserOutlined />} style={{ background: '#F3F4F6', color: '#6B7280' }} />
-          )}
           <Dropdown menu={{ items: languageMenuItems }} placement="bottomRight">
             <Button
               type="text"
@@ -157,7 +162,7 @@ const AppLayout: React.FC = () => {
       </Header>
       <Drawer
         title={null}
-        placement="right"
+        placement="left"
         onClose={() => setMobileMenuOpen(false)}
         open={mobileMenuOpen}
         width={280}
@@ -197,11 +202,15 @@ const AppLayout: React.FC = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           {/* User info */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Avatar icon={<UserOutlined />} style={{ background: '#F3F4F6', color: '#6B7280' }} />
-            <Text style={{ color: '#1F2937', fontWeight: 500, fontSize: 16 }}>{user.name}</Text>
+            <Avatar 
+              src={user.avatar_url} 
+              icon={<UserOutlined />} 
+              style={{ background: '#F3F4F6', color: '#6B7280' }} 
+            />
+            <Text style={{ color: '#1F2937', fontWeight: 500, fontSize: 16 }}>{user.email || user.name}</Text>
           </div>
 
-          {/* Navigation menu */}
+          {/* Navigation menu (mobile shows all items) */}
           <Menu
             mode="vertical"
             selectedKeys={[location.pathname]}
@@ -214,14 +223,44 @@ const AppLayout: React.FC = () => {
           />
         </div>
       </Drawer>
-      <Content style={{ 
-        padding: isMobile ? '16px' : '32px', 
-        minHeight: `calc(100vh - ${isMobile ? 64 : 72}px)` 
-      }}>
-        <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-          <Outlet />
-        </div>
-      </Content>
+      <Layout>
+        {!isMobile && (
+          <Sider
+            width={240}
+            theme="light"
+            style={{
+              background: '#FFFFFF',
+              borderRight: '1px solid #E5E7EB'
+            }}
+          >
+            <div style={{ padding: 16, borderBottom: '1px solid #E5E7EB' }}>
+              <Space size={12}>
+                <Avatar 
+                  src={user.avatar_url} 
+                  icon={<UserOutlined />} 
+                  style={{ background: '#F3F4F6', color: '#6B7280' }} 
+                />
+                <Text style={{ color: '#1F2937', fontWeight: 500, fontSize: 14 }}>{user.email || user.name}</Text>
+              </Space>
+            </div>
+            <Menu
+              mode="inline"
+              selectedKeys={[location.pathname]}
+              items={menuItems}
+              onClick={({ key }) => navigate(key)}
+              style={{ border: 'none' }}
+            />
+          </Sider>
+        )}
+        <Content style={{ 
+          padding: isMobile ? '16px' : '32px', 
+          minHeight: `calc(100vh - ${isMobile ? 64 : 72}px)` 
+        }}>
+          <div style={{ maxWidth: 1400, margin: '0 auto' }}>
+            <Outlet />
+          </div>
+        </Content>
+      </Layout>
     </Layout>
   );
 };

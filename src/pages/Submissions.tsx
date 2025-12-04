@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Card, Empty, Tag, Button, Space, Typography, Row, Col, Divider, Modal, Form, Input, message, Spin, DatePicker, Select, Popconfirm } from 'antd';
+import { Card, Empty, Tag, Button, Space, Typography, Row, Col, Divider, Modal, Form, Input, message, Spin, DatePicker, Select, Popconfirm, Dropdown, MenuProps } from 'antd';
 import { FileTextOutlined, DownloadOutlined, EyeOutlined, UserOutlined, CalendarOutlined, LoadingOutlined, SearchOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -7,6 +7,7 @@ import { submissionsApi, FormSubmission } from '../api/submissions';
 import { formsApi } from '../api/forms';
 import apiClient from '../api/client';
 import { Dayjs } from 'dayjs';
+import { useParams, useNavigate } from 'react-router-dom';
 
 const { Text } = Typography;
 const { TextArea } = Input;
@@ -16,8 +17,11 @@ const Submissions: React.FC = () => {
   const { t, i18n } = useTranslation();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const queryClient = useQueryClient();
+  const { submissionId } = useParams<{ submissionId?: string }>();
+  const navigate = useNavigate();
   const [previewSubmission, setPreviewSubmission] = useState<FormSubmission | null>(null);
   const [downloadingFileId, setDownloadingFileId] = useState<string | null>(null);
+  const [exportingSubmissionId, setExportingSubmissionId] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
@@ -35,6 +39,29 @@ const Submissions: React.FC = () => {
   const [userEmail, setUserEmail] = useState<string>('');
   const [fieldValueSearch, setFieldValueSearch] = useState<string>('');
   const [formId, setFormId] = useState<string>('');
+
+  // Fetch submission by ID if in URL
+  const { data: submissionFromUrl, isLoading: isLoadingSubmissionFromUrl } = useQuery({
+    queryKey: ['submission', submissionId],
+    queryFn: async () => {
+      if (!submissionId) return null;
+      try {
+        return await submissionsApi.getSubmissionById(submissionId);
+      } catch (error) {
+        message.error(t('submissions.failedToLoad'));
+        navigate('/submissions');
+        return null;
+      }
+    },
+    enabled: !!submissionId,
+  });
+
+  // Sync URL submission with modal state
+  useEffect(() => {
+    if (submissionFromUrl && submissionId) {
+      setPreviewSubmission(submissionFromUrl);
+    }
+  }, [submissionFromUrl, submissionId]);
 
   // Fetch forms for filter dropdown
   const { data: formsData } = useQuery({
@@ -114,6 +141,38 @@ const Submissions: React.FC = () => {
       message.error(t('submissions.deleteError'));
     },
   });
+
+  // Export submission handler
+  const handleExportSubmission = async (submissionId: string, format: 'csv' | 'xlsx') => {
+    setExportingSubmissionId(submissionId);
+    try {
+      const blob = await submissionsApi.exportSubmission(submissionId, format, i18n.language);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Extract filename from blob or generate one
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+      const submission = submissions.find(s => s.id === submissionId);
+      const formTitle = submission?.form?.title || 'submission';
+      const submitterName = submission?.user?.name || 'user';
+      const safeTitle = formTitle.replace(/[^a-zA-Z0-9-_ ]/g, '_').trim().replace(/\s+/g, '_');
+      const safeUser = submitterName.replace(/[^a-zA-Z0-9-_ ]/g, '_').trim().replace(/\s+/g, '_');
+      link.download = `${safeTitle}_${safeUser}_${timestamp}.${format}`;
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      message.success(t('submissions.exportSuccess'));
+    } catch (error: any) {
+      console.error('Error exporting submission:', error);
+      message.error(t('submissions.exportError'));
+    } finally {
+      setExportingSubmissionId(null);
+    }
+  };
 
   const isViewableFile = (contentType?: string): boolean => {
     if (!contentType) return false;
@@ -305,15 +364,16 @@ const Submissions: React.FC = () => {
         <>
           <Row gutter={[24, 24]}>
             {submissions.map((submission: FormSubmission) => {
-              const submittedDate = new Date(submission.submitted_at);
+              const submittedDate = submission.submitted_at ? new Date(submission.submitted_at) : new Date();
+              const isValidDate = !isNaN(submittedDate.getTime());
               const locale = i18n.language === 'uk' ? 'uk-UA' : 'en-US';
-              const month = submittedDate.toLocaleDateString(locale, { month: 'short' });
-              const day = submittedDate.getDate();
-              const year = submittedDate.getFullYear();
-              const time = submittedDate.toLocaleString(locale, {
+              const month = isValidDate ? submittedDate.toLocaleDateString(locale, { month: 'short' }) : 'N/A';
+              const day = isValidDate ? submittedDate.getDate() : 0;
+              const year = isValidDate ? submittedDate.getFullYear() : 0;
+              const time = isValidDate ? submittedDate.toLocaleString(locale, {
                 hour: '2-digit',
                 minute: '2-digit'
-              });
+              }) : 'N/A';
               
               return (
                 <Col xs={24} sm={24} md={12} lg={8} key={submission.id}>
@@ -333,6 +393,10 @@ const Submissions: React.FC = () => {
                     }}
                     bodyStyle={{ display: 'flex', flexDirection: 'column', flex: 1, padding: '20px' }}
                     hoverable
+                    onClick={() => {
+                      setPreviewSubmission(submission);
+                      navigate(`/submissions/${submission.id}`);
+                    }}
                   >
                     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
                       <div>
@@ -452,40 +516,71 @@ const Submissions: React.FC = () => {
                               {!isMobile && t('submissions.delete')}
                             </Button>
                           </Popconfirm>
-                          <Button
-                            icon={<EyeOutlined />}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setPreviewSubmission(submission);
+                          <Dropdown
+                            menu={{
+                              items: [
+                                {
+                                  key: 'csv',
+                                  label: t('submissions.exportAsCSV'),
+                                  icon: <DownloadOutlined />,
+                                  onClick: (e) => {
+                                    e.domEvent.stopPropagation();
+                                    handleExportSubmission(submission.id, 'csv');
+                                  },
+                                },
+                                {
+                                  key: 'xlsx',
+                                  label: t('submissions.exportAsXLSX'),
+                                  icon: <DownloadOutlined />,
+                                  onClick: (e) => {
+                                    e.domEvent.stopPropagation();
+                                    handleExportSubmission(submission.id, 'xlsx');
+                                  },
+                                },
+                              ],
                             }}
-                            style={{ 
-                              borderRadius: 6, 
-                              fontSize: 10,
-                              fontWeight: 500,
-                              background: '#F9FAFB',
-                              border: '1px solid #E5E7EB',
-                              color: '#6B7280',
-                              height: 24,
-                              padding: '0 8px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 3,
-                              transition: 'all 0.2s ease'
-                            }}
-                            size="small"
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.background = '#F3F4F6';
-                              e.currentTarget.style.borderColor = '#D1D5DB';
-                              e.currentTarget.style.color = '#374151';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.background = '#F9FAFB';
-                              e.currentTarget.style.borderColor = '#E5E7EB';
-                              e.currentTarget.style.color = '#6B7280';
-                            }}
+                            trigger={['click']}
                           >
-                            {t('submissions.viewDetails')}
-                          </Button>
+                            <Button
+                              icon={exportingSubmissionId === submission.id ? <LoadingOutlined spin /> : <DownloadOutlined />}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                              }}
+                              loading={exportingSubmissionId === submission.id}
+                              disabled={exportingSubmissionId === submission.id}
+                              style={{ 
+                                borderRadius: 6, 
+                                fontSize: 10,
+                                fontWeight: 500,
+                                background: '#F9FAFB',
+                                border: '1px solid #E5E7EB',
+                                color: '#6B7280',
+                                height: 24,
+                                padding: '0 8px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 3,
+                                transition: 'all 0.2s ease'
+                              }}
+                              size="small"
+                              onMouseEnter={(e) => {
+                                if (exportingSubmissionId !== submission.id) {
+                                  e.currentTarget.style.background = '#F3F4F6';
+                                  e.currentTarget.style.borderColor = '#D1D5DB';
+                                  e.currentTarget.style.color = '#374151';
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                if (exportingSubmissionId !== submission.id) {
+                                  e.currentTarget.style.background = '#F9FAFB';
+                                  e.currentTarget.style.borderColor = '#E5E7EB';
+                                  e.currentTarget.style.color = '#6B7280';
+                                }
+                              }}
+                            >
+                              {!isMobile && (exportingSubmissionId === submission.id ? t('submissions.downloading') : t('submissions.download'))}
+                            </Button>
+                          </Dropdown>
                         </Space>
                       </div>
                     </div>
@@ -516,7 +611,10 @@ const Submissions: React.FC = () => {
           </div>
         }
         open={previewSubmission !== null}
-        onCancel={() => setPreviewSubmission(null)}
+        onCancel={() => {
+          setPreviewSubmission(null);
+          navigate('/submissions');
+        }}
         footer={null}
         width={isMobile ? '95%' : 800}
         style={{ top: isMobile ? 20 : undefined, borderRadius: 12 }}
@@ -535,13 +633,17 @@ const Submissions: React.FC = () => {
             <div style={{ marginBottom: 24 }}>
               <CalendarOutlined style={{ color: '#9CA3AF', marginRight: 8 }} />
               <Text style={{ fontSize: 13, color: '#6B7280' }}>
-                {new Date(previewSubmission.submitted_at).toLocaleString(i18n.language === 'uk' ? 'uk-UA' : 'en-US', {
-                  month: 'long',
-                  day: 'numeric',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
+                {(() => {
+                  const date = previewSubmission.submitted_at ? new Date(previewSubmission.submitted_at) : new Date();
+                  const isValid = !isNaN(date.getTime());
+                  return isValid ? date.toLocaleString(i18n.language === 'uk' ? 'uk-UA' : 'en-US', {
+                    month: 'long',
+                    day: 'numeric',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  }) : 'N/A';
+                })()}
               </Text>
             </div>
             
@@ -556,6 +658,8 @@ const Submissions: React.FC = () => {
                     .sort((a, b) => a.order - b.order)
                     .map((field) => {
                       const fieldValue = previewSubmission.field_values.find(fv => fv.field_id === field.id);
+                      console.log('Field:', field.label, 'Field ID:', field.id, 'Field Value:', fieldValue);
+                      console.log('All field_values:', previewSubmission.field_values);
                       return (
                         <Form.Item
                           key={field.id}
@@ -572,9 +676,9 @@ const Submissions: React.FC = () => {
                               value={fieldValue?.value || ''}
                               style={{ borderRadius: 8, fontSize: 15 }}
                               size="large"
-                              disabled
+                              readOnly
                             />
-                          ) : field.field_type === 'file' ? (
+                          ) : field.field_type === 'files' ? (
                             <div>
                               {previewSubmission.files
                                 .filter(f => f.field_id && f.field_id === field.id)
@@ -737,10 +841,33 @@ const Submissions: React.FC = () => {
                                 <Text style={{ color: '#9CA3AF', fontSize: 13 }}>-</Text>
                               )}
                             </div>
+                          ) : field.field_type === 'signature' ? (
+                            <div style={{
+                              border: '2px solid #E5E7EB',
+                              borderRadius: 8,
+                              padding: 8,
+                              display: 'inline-block',
+                              backgroundColor: '#FAFBFC',
+                            }}>
+                              {fieldValue?.value ? (
+                                <img 
+                                  src={fieldValue.value} 
+                                  alt="Signature" 
+                                  style={{
+                                    maxWidth: '100%',
+                                    height: 'auto',
+                                    display: 'block',
+                                    borderRadius: 4,
+                                  }}
+                                />
+                              ) : (
+                                <Text style={{ color: '#9CA3AF', fontSize: 13 }}>No signature</Text>
+                              )}
+                            </div>
                           ) : (
                             <Input 
                               value={fieldValue?.value || ''}
-                              style={{ borderRadius: 8, height: 44, fontSize: 15, background: '#F9FAFB', cursor: 'not-allowed' }} 
+                              style={{ borderRadius: 8, height: 44, fontSize: 15 }} 
                               size="large" 
                               readOnly
                             />

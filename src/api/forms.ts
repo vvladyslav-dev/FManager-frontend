@@ -51,24 +51,24 @@ export interface UpdateFormRequest {
 export const formsApi = {
   createForm: async (creatorId: string, data: CreateFormRequest): Promise<Form> => {
     const response = await apiClient.post(`/forms?creator_id=${creatorId}`, data);
-    return response.data;
+    return response.data.form; // Extract form from response object
   },
   
   getForm: async (formId: string): Promise<Form> => {
     const response = await apiClient.get(`/forms/${formId}`);
-    return response.data;
+    return response.data.form; // Extract form from response object
   },
   
   getFormsByCreator: async (creatorId: string, skip: number = 0, limit: number = 10): Promise<Form[]> => {
     const response = await apiClient.get(`/admin/${creatorId}/forms`, {
       params: { skip, limit }
     });
-    return response.data;
+    return response.data.forms; // Extract forms array from response object
   },
   
   updateForm: async (formId: string, data: UpdateFormRequest): Promise<Form> => {
     const response = await apiClient.put(`/forms/${formId}`, data);
-    return response.data;
+    return response.data.form; // Extract form from response object
   },
   
   deleteForm: async (formId: string): Promise<void> => {

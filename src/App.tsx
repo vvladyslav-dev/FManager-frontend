@@ -14,6 +14,8 @@ import Submissions from './pages/Submissions';
 import SubmitFormPage from './pages/SubmitFormPage';
 import CreateFormPage from './pages/CreateFormPage';
 import SuperAdmin from './pages/SuperAdmin';
+import Settings from './pages/Settings';
+import UserSettings from './pages/UserSettings';
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const token = localStorage.getItem('access_token');
@@ -44,7 +46,11 @@ function App() {
               <Route path="forms" element={<Forms />} />
               <Route path="forms/create" element={<CreateFormPage />} />
               <Route path="submissions" element={<Submissions />} />
+              <Route path="submissions/:submissionId" element={<Submissions />} />
               <Route path="super-admin" element={<SuperAdmin />} />
+              <Route path="settings" element={<Navigate to="/settings/notifications" />} />
+              <Route path="settings/notifications" element={<Settings />} />
+              <Route path="settings/user" element={<UserSettings />} />
             </Route>
           </Routes>
         </BrowserRouter>

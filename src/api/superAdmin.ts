@@ -14,12 +14,12 @@ export interface User {
 export const superAdminApi = {
   getUnapprovedAdmins: async (): Promise<User[]> => {
     const response = await apiClient.get('/super-admin/unapproved-admins');
-    return response.data;
+    return response.data.admins;
   },
   
   approveAdmin: async (userId: string): Promise<User> => {
     const response = await apiClient.post(`/super-admin/admins/${userId}/approve`);
-    return response.data;
+    return response.data.user;
   },
   
   rejectAdmin: async (userId: string): Promise<{ success: boolean }> => {

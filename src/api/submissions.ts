@@ -75,16 +75,29 @@ export const submissionsApi = {
     const response = await apiClient.get(`/admin/${adminId}/submissions`, {
       params
     });
-    return response.data;
+    return response.data.submissions;
   },
   
   getSubmissionsByForm: async (formId: string): Promise<FormSubmission[]> => {
     const response = await apiClient.get(`/forms/${formId}/submissions`);
-    return response.data;
+    return response.data.submissions;
+  },
+  
+  getSubmissionById: async (submissionId: string): Promise<FormSubmission> => {
+    const response = await apiClient.get(`/submissions/${submissionId}`);
+    return response.data.submission;
   },
   
   deleteSubmission: async (submissionId: string): Promise<void> => {
     await apiClient.delete(`/submissions/${submissionId}`);
+  },
+  
+  exportSubmission: async (submissionId: string, format: 'csv' | 'xlsx', locale?: string): Promise<Blob> => {
+    const response = await apiClient.get(`/submissions/${submissionId}/export`, {
+      params: { format, locale: locale || 'en' },
+      responseType: 'blob',
+    });
+    return response.data;
   },
 };
 

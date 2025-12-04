@@ -8,6 +8,8 @@ import { formsApi } from '../api/forms';
 import apiClient from '../api/client';
 import type { UploadFile } from 'antd/es/upload/interface';
 import type { Dayjs } from 'dayjs';
+import type { Rule } from 'antd/es/form';
+import SignatureCanvas from '../components/SignatureCanvas';
 
 const { TextArea } = Input;
 
@@ -15,7 +17,7 @@ interface FormSubmissionData {
   user_name: string;
   user_email?: string;
   field_values: Record<string, string>;
-  files: Record<string, File>;
+  files: Record<string, File[]>;
 }
 
 const SubmitFormPage: React.FC = () => {
@@ -47,21 +49,35 @@ const SubmitFormPage: React.FC = () => {
       if (data.user_email) {
         formData.append('user_email', data.user_email);
       }
-      // Always send field_values, even if empty
-      formData.append('field_values', JSON.stringify(data.field_values || {}));
+      // Always send field_values_json, even if empty
+      formData.append('field_values_json', JSON.stringify(data.field_values || {}));
       
       // Append files and create mapping of file index to field_id
       const fileFieldsMapping: Record<string, string> = {};
       let fileIndex = 0;
-      Object.entries(data.files || {}).forEach(([fieldId, file]) => {
-        formData.append('files', file);
-        fileFieldsMapping[fileIndex.toString()] = fieldId;
-        fileIndex++;
+      
+      // First, append all files and build the mapping
+      Object.entries(data.files || {}).forEach(([fieldId, files]) => {
+        files.forEach((file) => {
+          formData.append('files', file);
+          fileFieldsMapping[fileIndex.toString()] = fieldId;
+          fileIndex++;
+        });
       });
       
-      if (Object.keys(fileFieldsMapping).length > 0) {
-        formData.append('file_fields', JSON.stringify(fileFieldsMapping));
+      // Always append file_fields_json if there are any files
+      if (fileIndex > 0) {
+        formData.append('file_fields_json', JSON.stringify(fileFieldsMapping));
       }
+
+      // Debug logging
+      console.log('Submitting form with:');
+      console.log('- Files count:', fileIndex);
+      console.log('- File fields mapping:', fileFieldsMapping);
+      console.log('- Field values:', data.field_values);
+      
+      // Log FormData entries
+      console.log('FormData keys:', Array.from(formData.keys()));
 
       const response = await apiClient.post(`/forms/${formId}/submit`, formData, {
         headers: {
@@ -83,11 +99,11 @@ const SubmitFormPage: React.FC = () => {
     if (!formData) return;
 
     const fieldValues: Record<string, string> = {};
-    const files: Record<string, File> = {};
+    const files: Record<string, File[]> = {};
 
     // Collect field values (excluding file fields)
     formData.fields?.forEach((field) => {
-      if (field.field_type !== 'file') {
+      if (field.field_type !== 'files') {
         const fieldId = field.id;
         const value = values[`field_${fieldId}`];
         if (value !== undefined && value !== null && value !== '') {
@@ -109,10 +125,7 @@ const SubmitFormPage: React.FC = () => {
     // Collect files
     Object.entries(fileList).forEach(([fieldId, filesList]) => {
       if (filesList && filesList.length > 0) {
-        const file = filesList[0].originFileObj;
-        if (file) {
-          files[fieldId] = file;
-        }
+        files[fieldId] = filesList.map(f => f.originFileObj as File).filter(Boolean);
       }
     });
 
@@ -234,9 +247,9 @@ const SubmitFormPage: React.FC = () => {
                     // Clean label from asterisks at the beginning
                     const cleanLabel = field.label.replace(/^\s*\*\s*/, '').trim();
                     
-                    const fieldRules = [];
+                    const fieldRules: Rule[] = [];
                     if (field.is_required) {
-                      if (field.field_type === 'file') {
+                      if (field.field_type === 'files') {
                         // Custom validation for file fields
                         fieldRules.push({
                           validator: (_: any) => {
@@ -259,6 +272,19 @@ const SubmitFormPage: React.FC = () => {
                         });
                       }
                     }
+
+                    // Add specific validation for email and phone fields
+                    if (field.field_type === 'email') {
+                      fieldRules.push({
+                        type: 'email' as const,
+                        message: 'Please enter a valid email address',
+                      });
+                    } else if (field.field_type === 'phone') {
+                      fieldRules.push({
+                        pattern: /^[\d\s\-\+\(\)]+$/,
+                        message: 'Please enter a valid phone number',
+                      });
+                    }
                     
                     return (
                       <Form.Item
@@ -279,7 +305,7 @@ const SubmitFormPage: React.FC = () => {
                             style={{ borderRadius: 8, fontSize: 15 }}
                             size="large"
                           />
-                        ) : field.field_type === 'file' ? (
+                        ) : field.field_type === 'files' ? (
                           <Upload
                             fileList={fileList[field.id] || []}
                             onChange={({ fileList }) => {
@@ -288,7 +314,7 @@ const SubmitFormPage: React.FC = () => {
                               form.validateFields([`field_${field.id}`]);
                             }}
                             beforeUpload={() => false}
-                            maxCount={1}
+                            multiple
                           >
                             <Button 
                               icon={<UploadOutlined />}
@@ -302,6 +328,20 @@ const SubmitFormPage: React.FC = () => {
                           <Input 
                             type="number" 
                             placeholder={field.placeholder || t('submitForm.enterField', { fieldLabel: cleanLabel.toLowerCase() })}
+                            style={{ borderRadius: 8, height: 44, fontSize: 15 }}
+                            size="large"
+                          />
+                        ) : field.field_type === 'email' ? (
+                          <Input 
+                            type="email" 
+                            placeholder={field.placeholder || t('submitForm.enterEmail')}
+                            style={{ borderRadius: 8, height: 44, fontSize: 15 }}
+                            size="large"
+                          />
+                        ) : field.field_type === 'phone' ? (
+                          <Input 
+                            type="tel" 
+                            placeholder={field.placeholder || '+1 (555) 123-4567'}
                             style={{ borderRadius: 8, height: 44, fontSize: 15 }}
                             size="large"
                           />
@@ -347,6 +387,11 @@ const SubmitFormPage: React.FC = () => {
                               }
                             })()}
                           </Select>
+                        ) : field.field_type === 'signature' ? (
+                          <SignatureCanvas 
+                            width={isMobile ? 300 : 500}
+                            height={200}
+                          />
                         ) : (
                           <Input 
                             placeholder={field.placeholder || t('submitForm.enterField', { fieldLabel: cleanLabel.toLowerCase() })}

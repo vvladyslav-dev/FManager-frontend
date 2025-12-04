@@ -185,9 +185,12 @@ const FormFieldEditor: React.FC<FormFieldEditorProps> = ({
               <Select.Option value="textarea">{t('createForm.longQuestion')}</Select.Option>
               <Select.Option value="number">{t('createForm.number')}</Select.Option>
               <Select.Option value="date">{t('createForm.date')}</Select.Option>
+              <Select.Option value="email">{t('createForm.email')}</Select.Option>
+              <Select.Option value="phone">{t('createForm.phone')}</Select.Option>
               <Select.Option value="select">{t('createForm.select')}</Select.Option>
               <Select.Option value="multiselect">{t('createForm.multiSelect')}</Select.Option>
-              <Select.Option value="file">{t('createForm.file')}</Select.Option>
+              <Select.Option value="files">{t('createForm.files')}</Select.Option>
+              <Select.Option value="signature">{t('createForm.signature')}</Select.Option>
             </Select>
           </Form.Item>
 
