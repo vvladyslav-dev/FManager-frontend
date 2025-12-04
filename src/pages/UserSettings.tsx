@@ -7,7 +7,7 @@ import * as userApiModule from '../api/user';
 
 const userApi = userApiModule.userApi;
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Paragraph } = Typography;
 
 const UserSettings: React.FC = () => {
   const { t } = useTranslation();

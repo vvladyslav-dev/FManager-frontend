@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, Switch, Input, Button, message, Space, Typography, Divider } from 'antd';
 import { BellOutlined, CopyOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
@@ -25,11 +25,7 @@ const Settings: React.FC = () => {
   });
   const [chatIdInput, setChatIdInput] = useState('');
 
-  useEffect(() => {
-    loadSettings();
-  }, []);
-
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     try {
       setLoading(true);
       const data = await getNotificationSettings();
@@ -42,7 +38,11 @@ const Settings: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
+
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
 
   const handleTelegramToggle = async (enabled: boolean) => {
     if (enabled && !settings.telegram_chat_id) {

@@ -281,7 +281,7 @@ const SubmitFormPage: React.FC = () => {
                       });
                     } else if (field.field_type === 'phone') {
                       fieldRules.push({
-                        pattern: /^[\d\s\-\+\(\)]+$/,
+                        pattern: /^[\d\s\-+()]+$/,
                         message: 'Please enter a valid phone number',
                       });
                     }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Card, Empty, Tag, Button, Space, Typography, Row, Col, Divider, Modal, Form, Input, message, Spin, DatePicker, Select, Popconfirm, Dropdown, MenuProps } from 'antd';
+import { Card, Empty, Tag, Button, Space, Typography, Row, Col, Divider, Modal, Form, Input, message, Spin, DatePicker, Select, Popconfirm, Dropdown } from 'antd';
 import { FileTextOutlined, DownloadOutlined, EyeOutlined, UserOutlined, CalendarOutlined, LoadingOutlined, SearchOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -41,7 +41,7 @@ const Submissions: React.FC = () => {
   const [formId, setFormId] = useState<string>('');
 
   // Fetch submission by ID if in URL
-  const { data: submissionFromUrl, isLoading: isLoadingSubmissionFromUrl } = useQuery({
+  const { data: submissionFromUrl } = useQuery({
     queryKey: ['submission', submissionId],
     queryFn: async () => {
       if (!submissionId) return null;
